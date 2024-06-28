@@ -1,0 +1,181 @@
+@model IEnumerable<TodoListApp.WebApi.Models.Entities.TaskItem>
+
+@{
+    ViewData["Title"] = "Assigned Tasks";
+}
+
+<h1>Assigned Tasks</h1>
+
+<div class="d-flex justify-content-end mb-3">
+    <div class="dropdown">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="filterDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Filter Tasks
+        </button>
+        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="filterDropdown">
+            <div class="dropdown-item">
+                <input type="checkbox" id="filterActive" /> Active
+            </div>
+            <div class="dropdown-item">
+                <input type="checkbox" id="filterOverdue" /> Overdue
+            </div>
+            <div class="dropdown-item">
+                <input type="checkbox" id="filterCompleted" /> Completed
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="table mt-3">
+    <thead>
+        <tr>
+            <th class="w-50"><a href="#" id="sortTitle">Title</a></th>
+            <th class="w-25 text-center"><a href="#" id="sortDueDate">Due Date</a></th>
+            <th class="w-25 text-center">Status</th>
+        </tr>
+    </thead>
+    <tbody id="taskTableBody">
+        @foreach (var task in Model)
+        {
+			<tr class="task-item @(task.DueDate < DateTime.Now && !task.IsCompleted ? "table-danger overdue" : (task.IsCompleted ? "table-success completed" : "active"))" data-task-id="@task.Id">
+                <td>@task.Title</td>
+				<td class="text-center">@String.Format("{0:HH:mm dd/MM/yyyy}", task.DueDate)</td>
+                <td class="text-center">
+                    <input type="checkbox" class="completed-checkbox" data-task-id="@task.Id" @(task.IsCompleted ? "checked" : "") />
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div>
+    <a asp-action="Index" asp-controller="TodoList" class="btn btn-secondary">Back to Lists</a>
+</div>
+
+@section Scripts {
+	<script>
+		$(document).ready(function () {
+			function loadFilterState() {
+				const showActive = localStorage.getItem('filterActive');
+				const showOverdue = localStorage.getItem('filterOverdue');
+				const showCompleted = localStorage.getItem('filterCompleted');
+
+				if (showActive === null && showOverdue === null && showCompleted === null) {
+					$('#filterActive').prop('checked', true);
+					$('#filterOverdue').prop('checked', false);
+					$('#filterCompleted').prop('checked', false);
+				} else {
+					$('#filterActive').prop('checked', showActive === 'true');
+					$('#filterOverdue').prop('checked', showOverdue === 'true');
+					$('#filterCompleted').prop('checked', showCompleted === 'true');
+				}
+			}
+
+			function saveFilterState() {
+				localStorage.setItem('filterActive', $('#filterActive').is(':checked'));
+				localStorage.setItem('filterOverdue', $('#filterOverdue').is(':checked'));
+				localStorage.setItem('filterCompleted', $('#filterCompleted').is(':checked'));
+			}
+
+			function filterTasks() {
+				const showActive = $('#filterActive').is(':checked');
+				const showOverdue = $('#filterOverdue').is(':checked');
+				const showCompleted = $('#filterCompleted').is(':checked');
+
+				$('.task-item').each(function () {
+					const isActive = $(this).hasClass('active');
+					const isOverdue = $(this).hasClass('overdue');
+					const isCompleted = $(this).hasClass('completed');
+
+					if ((isActive && showActive) || (isOverdue && showOverdue) || (isCompleted && showCompleted)) {
+						$(this).show();
+					} else {
+						$(this).hide();
+					}
+				});
+			}
+
+			// Load filter state
+			loadFilterState();
+
+			// Initial filter
+			filterTasks();
+
+			// Event listeners for filter checkboxes
+			$('#filterActive').change(function () {
+				saveFilterState();
+				filterTasks();
+			});
+			$('#filterOverdue').change(function () {
+				saveFilterState();
+				filterTasks();
+			});
+			$('#filterCompleted').change(function () {
+				saveFilterState();
+				filterTasks();
+			});
+
+			$(".completed-checkbox").click(function (event) {
+				event.stopPropagation(); // Остановить распространение события click
+			}).change(function () {
+				const taskId = $(this).data("task-id");
+				const isCompleted = $(this).is(":checked");
+
+				$.ajax({
+					url: '@Url.Action("ToggleCompleted", "TaskItem")',
+					type: 'POST',
+					data: {
+						id: taskId,
+						isCompleted: isCompleted
+					},
+					success: function (response) {
+						console.log("Task status updated successfully.");
+						location.reload(); // Перезагрузить страницу для обновления цвета строки
+					},
+					error: function (xhr, status, error) {
+						console.log("Error updating task status: " + error);
+					}
+				});
+			});
+
+			// Переход на страницу деталей задачи при клике на строку задачи
+			$(".task-item").click(function () {
+				const taskId = $(this).data("task-id");
+				window.location.href = '@Url.Action("Details", "TaskItem")/' + taskId;
+			});
+
+			// Сортировка
+			const sortDirection = {
+				title: 'asc',
+				dueDate: 'asc'
+			};
+
+			function sortTable(column, direction) {
+				const rows = $('#taskTableBody tr').get();
+				rows.sort(function (a, b) {
+					const A = $(a).children('td').eq(column).text().toUpperCase();
+					const B = $(b).children('td').eq(column).text().toUpperCase();
+
+					if (direction === 'asc') {
+						return (A < B) ? -1 : (A > B) ? 1 : 0;
+					} else {
+						return (A > B) ? -1 : (A < B) ? 1 : 0;
+					}
+				});
+
+				$.each(rows, function (index, row) {
+					$('#taskTableBody').append(row);
+				});
+			}
+
+			$('#sortTitle').click(function () {
+				sortTable(0, sortDirection.title);
+				sortDirection.title = (sortDirection.title === 'asc') ? 'desc' : 'asc';
+			});
+
+			$('#sortDueDate').click(function () {
+				sortTable(1, sortDirection.dueDate);
+				sortDirection.dueDate = (sortDirection.dueDate === 'asc') ? 'desc' : 'asc';
+			});
+		});
+	</script>
+}

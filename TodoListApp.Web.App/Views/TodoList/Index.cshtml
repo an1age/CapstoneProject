@@ -1,0 +1,46 @@
+@model IEnumerable<TodoListApp.WebApi.Models.Entities.TodoList>
+
+@{
+	ViewData["Title"] = "Todo Lists";
+}
+
+<h1>Todo Lists</h1>
+
+<p>
+	<a asp-action="Create" class="btn btn-primary">Create New Todo List</a>
+</p>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>Description</th>
+			<th>Actions</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var todoList in Model)
+		{
+			<tr class="todo-list-item" onclick="window.location.href='@Url.Action("Details", new { id = todoList.Id })'">
+				<td>@todoList.Name</td>
+				<td>@todoList.Description</td>
+				<td>
+					<a asp-action="Edit" asp-route-id="@todoList.Id" class="btn btn-warning">Edit</a> |
+					<a asp-action="Delete" asp-route-id="@todoList.Id" class="btn btn-danger">Delete</a>
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+@section Scripts {
+	<script>
+		$(document).ready(function () {
+			$(".todo-list-item").click(function (event) {
+				if (event.target.tagName === 'A' || event.target.tagName === 'BUTTON') {
+					event.stopPropagation();
+				}
+			});
+		});
+	</script>
+}

@@ -1,0 +1,66 @@
+@model TodoListApp.WebApi.Models.Entities.TodoList
+
+@{
+	ViewData["Title"] = "Tasks for " + Model.Name;
+}
+
+<h1>@Model.Name</h1>
+
+<p>@Model.Description</p>
+
+<p>
+	<a asp-action="CreateTask" asp-controller="TaskItem" asp-route-todoListId="@Model.Id" class="btn btn-primary">Add New Task</a>
+</p>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>Title</th>
+			<th>Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var task in Model.TaskItems)
+		{
+			<tr class="task-item @(task.DueDate < DateTime.Now && !task.IsCompleted ? "table-danger" : (task.IsCompleted ? "table-success" : ""))" onclick="window.location.href='@Url.Action("Details", "TaskItem", new { id = task.Id })'">
+				<td>@task.Title</td>
+				<td>
+					<input type="checkbox" class="completed-checkbox" data-task-id="@task.Id" @(task.IsCompleted ? "checked" : "") />
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<div>
+	<a asp-action="Index" class="btn btn-secondary">Back to Lists</a>
+</div>
+
+@section Scripts {
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script>
+		$(document).ready(function () {
+			$(".completed-checkbox").click(function (event) {
+				event.stopPropagation();
+			}).change(function () {
+				const taskId = $(this).data("task-id");
+				const isCompleted = $(this).is(":checked");
+
+				$.ajax({
+					url: '@Url.Action("ToggleCompleted", "TaskItem")',
+					type: 'POST',
+					data: {
+						id: taskId,
+						isCompleted: isCompleted
+					},
+					success: function (response) {
+						console.log("Task status updated successfully.");
+						location.reload();
+					error: function (xhr, status, error) {
+						console.log("Error updating task status: " + error);
+					}
+				});
+			});
+		});
+	</script>
+}
